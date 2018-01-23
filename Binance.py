@@ -130,6 +130,7 @@ def get_symbol_data(symbol):
 
 
 def get_recent_trades(pair):
+    print(pair)
     if pair not in DataCache.recentTrades:
         DataCache.recentTrades[pair] = None
         DataCache.lastTradesUpdate[pair] = 0
@@ -247,7 +248,6 @@ class Symbol:
         self.maxQuantity = Decimal(data['filters'][1]['maxQty'])
         self.stepSize = Decimal(data['filters'][1]['stepSize'])
 
-
     def increment_bid(self, bid):
         bid += self.tickSize
         return bid
@@ -270,7 +270,6 @@ class Symbol:
             if t['symbol'] == self.pairSymbol:
                 return Decimal(t['askPrice'])
 
-
     def get_max_buyable_quant(self, price, amountToSpend):
 
         if self.stepSize >= 1:
@@ -283,7 +282,6 @@ class Symbol:
         amountToBuy = amountToSpend/price
         amountToBuy = amountToBuy.quantize(Decimal(step), rounding=ROUND_DOWN)  #Magic truncation
         return amountToBuy
-
 
     def get_max_sellable_quant(self, amount):
         amnt = Decimal(amount)
@@ -419,7 +417,7 @@ class BinanceBidOrder:
         self.quantBoughtPartial = 0
 
         if prev != self.quantCurrentlyOrdered:
-            print("Placed order for {} {}".format(self.quantCurrentlyOrdered, self.sym.minorSymbol))
+            print("Placed order for {} {} @ {}".format(self.quantCurrentlyOrdered, self.sym.minorSymbol, self.bid))
 
 
 
@@ -473,8 +471,7 @@ class BinanceBidOrder:
                         self.quantBoughtTotal += saleQuant
 
                         print("------PARITAL FILL: Bid: {} Total Bought: {} Partial Bought: {} ETH spent: {}".format(self.bid, self.quantBoughtTotal, self.quantBoughtPartial, self.amountSpent))
-                        self.lastTradeID = trades[0]['id']
-                        return False
+
                     else:  # saleQuant - () <= 0:
                         quantBought = self.quantCurrentlyOrdered - self.quantBoughtPartial
                         self.amountSpent += quantBought * self.bid
