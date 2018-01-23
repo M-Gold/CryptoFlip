@@ -2,8 +2,10 @@ from binance.client import Client
 from binance.enums import *
 from decimal import *
 import json, time
+from Order import Order
 
 
+AVG_BID_INCREASE = .025
 CACHE_LIFESPAN = 10# seconds
 TRADE_TAX = .001 #Binance's .1% fee
 
@@ -37,6 +39,9 @@ class DataCache:
 
  #--------------------Orders
 
+
+
+#------------------Orders
 def order_buy(pair, quantity, price):
     print("--placing order for {} {} at {} each".format(quantity, pair, price))
     order = client.create_order(
@@ -76,7 +81,7 @@ def order_abort(pair, orderId):
 
 
 
-#----------------Market Info Functions
+#----------------Market Info
 def get_orderbook_tickers():
     if time.time() - DataCache.lastOrderBookUpdate >= CACHE_LIFESPAN:
         #fetch new
@@ -128,7 +133,7 @@ def get_price(pair):
 
     if time.time() - DataCache.lastPriceUpdate >= CACHE_LIFESPAN:
         #fetch new
-        print("FETCHING NEW PRICE")
+        print("GETTING FRESH PRICE")
         prices = client.get_all_tickers()
         DataCache.priceData = prices
         DataCache.lastPriceUpdate = time.time()
@@ -291,6 +296,70 @@ class Symbol:
 
 
 
+
+
+
+
+class BinanceBidOrder:
+
+    sym = None
+    type = "BID"
+    orderId = None
+
+    bid = 0
+    amountToSpend = 0
+    amountSpent = 0
+
+    prepared = False
+
+
+    def __init__(self, symbol, amountToSpend):
+        self.sym = symbol
+        self.amountToSpend = Decimal(amountToSpend)
+
+
+    def prepare(self):
+        if not self.prepared:
+            bestBid = self.sym.get_best_bid()
+            self.bid = self.sym.increment_bid(bestBid)
+            self.prepared = True
+        else:
+            print("Trying to prepare an already prepared order")
+
+
+    def place(self):
+        if not self.prepared:
+            print("Trying to place an unprepared order. .Prepare() the order first.")
+            return
+
+        self.orderId = self.sym.buy_max(self.bid, self.amountToSpend)
+
+
+    def abort(self):
+        if self.orderId:
+            self.sym.abort_order(self.orderId)
+        else:
+            print("Trying to abort without an active order. Prepare and Place an order first")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def create_bid_order(tradePair, amountToSpend):
+    symData = get_symbol_data(tradePair)
+    sym = Symbol(symData)
+    return BinanceBidOrder(sym, amountToSpend)
+
+
 def get_best_spread(symbol):
 
     tickers = get_orderbook_tickers()
@@ -321,5 +390,5 @@ def get_best_spread(symbol):
             maxSpread = spread
             bestPair = pair
 
-    bestSymData = get_symbol_data(bestPair)
-    return Symbol(bestSymData)
+    #bestSymData = get_symbol_data(bestPair)
+    return bestPair, round(maxSpread,2) #Symbol(bestSymData)
